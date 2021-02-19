@@ -65,41 +65,47 @@ const run = async (paramd) => {
         assertionMethod: [publicKey.id]
     };
 
-    // sign the document as a simple assertion
-    const key = new RSAKeyPair({
+    const keypair_with_private = new RSAKeyPair({
         ...publicKey, 
         privateKeyPem: await fs.promises.readFile("key.private.pem", "utf-8"),
     });
+    const keypair_without_private = new RSAKeyPair({
+        ...publicKey, 
+        privateKeyPem: await fs.promises.readFile("key.private.pem", "utf-8"),
+    });
+
+    // sign the document as a simple assertion
     const signed = await jsigs.sign(paramd.document, {
         suite: new RsaSignature2018({
-            key,
+            key: keypair_with_private,
         }),
         purpose: new AssertionProofPurpose()
     });
 
     console.log()
-    console.log("Signed document:", JSON.stringify(signed, null, 2))
-
-    // we will need the documentLoader to verify the controller
-    const {node: documentLoader} = documentLoaders;
+    console.log("Signed:", JSON.stringify(signed, null, 2))
 
     // verify the signed document
     const result = await jsigs.verify(signed, {
-    documentLoader: document_loader,
-    suite: new RsaSignature2018(key),
-    purpose: new AssertionProofPurpose({controller})
+        documentLoader: document_loader,
+        suite: new RsaSignature2018(keypair_without_private),
+        purpose: new AssertionProofPurpose({
+            controller,
+        })
     });
-    if(result.verified) {
-    console.log("Signature verified.");
-    } else {
-    console.log("Signature verification error:", result.error);
-    }
-    }
 
-    run({
-        document: require("./document.json"),
-    }).catch(error => {
-        console.log(error)
-    })
+    console.log("")
+    if (result.verified) {
+        console.log("Signature verified!.");
+    } else {
+        console.log("Signature verification error:", result.error);
+    }
+}
+
+run({
+    document: require("./document.json"),
+}).catch(error => {
+    console.log(error)
+})
 
 
