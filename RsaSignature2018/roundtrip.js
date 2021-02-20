@@ -6,12 +6,10 @@
 //
 // for an example of how to specify these keys, look at [key-example]:
 
-const jsigs = require("jsonld-signatures")
+const jlds = require("jsonld-signatures")
 const fs = require("fs")
-const {RsaSignature2018} = jsigs.suites;
-const {AssertionProofPurpose} = jsigs.purposes;
-const {RSAKeyPair} = require("crypto-ld");
-const {documentLoaders} = require("jsonld");
+const jsonld = require("jsonld")
+const cryptold = require("crypto-ld")
 
 const SAMPLE_KEY_ID = "https://example.com/i/alice/keys/1"
 const documents = {}
@@ -37,7 +35,7 @@ const document_loader = url => {
         }
     }
 
-    return documentLoaders.node()(url);
+    return jsonld.documentLoaders.node()(url);
 };
 
  
@@ -48,48 +46,56 @@ const run = async (paramd) => {
      *  discovered during verification.
      */
     const publicKey = {
-        "@context": jsigs.SECURITY_CONTEXT_URL,
+        "@context": jlds.SECURITY_CONTEXT_URL,
         type: "RsaVerificationKey2018",
         id: SAMPLE_KEY_ID,
-        controller: "https://example.com/i/alice",
+        // controller: "https://example.com/i/alice", … this doesn't see to do anything
         publicKeyPem: await fs.promises.readFile("key.public.pem", "utf-8")
     }
     documents[SAMPLE_KEY_ID] = publicKey
 
-    // specify the public key controller object (whatevery the hell that is)
-    const controller = {
-        "@context": jsigs.SECURITY_CONTEXT_URL,
-        id: "https://example.com/i/alice",
-        publicKey: [publicKey],
-        // this authorizes this key to be used for making assertions
-        assertionMethod: [publicKey.id]
-    };
-
-    const keypair_with_private = new RSAKeyPair({
+    /**
+     *  PRIVATE PART - signing
+     */
+    const keypair_with_private = new cryptold.RSAKeyPair({
         ...publicKey, 
         privateKeyPem: await fs.promises.readFile("key.private.pem", "utf-8"),
     });
-    const keypair_without_private = new RSAKeyPair({
-        ...publicKey, 
-        privateKeyPem: await fs.promises.readFile("key.private.pem", "utf-8"),
-    });
+    const suite_with_private = new jlds.suites.RsaSignature2018({
+        key: keypair_with_private,
+    })
 
     // sign the document as a simple assertion
-    const signed = await jsigs.sign(paramd.document, {
-        suite: new RsaSignature2018({
-            key: keypair_with_private,
-        }),
-        purpose: new AssertionProofPurpose()
+    const signed = await jlds.sign(paramd.document, {
+        suite: suite_with_private,
+        purpose: new jlds.purposes.AssertionProofPurpose()
     });
 
     console.log()
     console.log("Signed:", JSON.stringify(signed, null, 2))
 
+    /**
+     *  PUBLIC PART - verification
+     */
+    // specify the public key controller object (whatevery the hell that is)
+    const controller = {
+        "@context": jlds.SECURITY_CONTEXT_URL,
+        // id: "https://example.com/i/alice", … this doesn't see to do anything
+        publicKey: [ publicKey ],
+        // this authorizes this key to be used for making assertions
+        assertionMethod: [ publicKey.id ]
+    };
+
+    const keypair_without_private = new cryptold.RSAKeyPair({
+        ...publicKey, 
+    });
+    const suite_without_private = new jlds.suites.RsaSignature2018(keypair_without_private)
+
     // verify the signed document
-    const result = await jsigs.verify(signed, {
+    const result = await jlds.verify(signed, {
         documentLoader: document_loader,
-        suite: new RsaSignature2018(keypair_without_private),
-        purpose: new AssertionProofPurpose({
+        suite: suite_without_private,
+        purpose: new jlds.purposes.AssertionProofPurpose({
             controller,
         })
     });
@@ -107,5 +113,3 @@ run({
 }).catch(error => {
     console.log(error)
 })
-
-
