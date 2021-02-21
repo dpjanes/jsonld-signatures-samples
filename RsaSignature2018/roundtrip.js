@@ -1,11 +1,3 @@
-// to generate the next two lines, run the following command:
-//
-// openssl genrsa -out key.pem; cat key.pem; 
-// openssl rsa -in key.pem -pubout -out pubkey.pem;
-// cat pubkey.pem; rm key.pem pubkey.pem
-//
-// for an example of how to specify these keys, look at [key-example]:
-
 const jlds = require("jsonld-signatures")
 const fs = require("fs")
 const jsonld = require("jsonld")
@@ -49,8 +41,8 @@ const run = async (paramd) => {
         "@context": jlds.SECURITY_CONTEXT_URL,
         type: "RsaVerificationKey2018",
         id: SAMPLE_KEY_ID,
-        // controller: "https://example.com/i/alice", … this doesn't see to do anything
-        publicKeyPem: await fs.promises.readFile("key.public.pem", "utf-8")
+        controller: "https://example.com/i/alice", // … this doesn't see to do anything
+        publicKeyPem: await fs.promises.readFile("ppk/public.pem", "utf-8")
     }
     documents[SAMPLE_KEY_ID] = publicKey
 
@@ -59,10 +51,12 @@ const run = async (paramd) => {
      */
     const keypair_with_private = new cryptold.RSAKeyPair({
         ...publicKey, 
-        privateKeyPem: await fs.promises.readFile("key.private.pem", "utf-8"),
+        privateKeyPem: await fs.promises.readFile("ppk/private.pem", "utf-8"),
     });
     const suite_with_private = new jlds.suites.RsaSignature2018({
         key: keypair_with_private,
+        // date: new Date(),
+
     })
 
     // sign the document as a simple assertion
@@ -80,7 +74,7 @@ const run = async (paramd) => {
     // specify the public key controller object (whatevery the hell that is)
     const controller = {
         "@context": jlds.SECURITY_CONTEXT_URL,
-        // id: "https://example.com/i/alice", … this doesn't see to do anything
+        id: "https://example.com/i/alice", // … this doesn't see to do anything
         publicKey: [ publicKey ],
         // this authorizes this key to be used for making assertions
         assertionMethod: [ publicKey.id ]

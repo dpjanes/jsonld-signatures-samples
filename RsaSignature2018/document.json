@@ -1,17 +1,10 @@
 {
-    "@context": {
-        "schema": "http://schema.org/",
-        "security": "https://w3id.org/security#",
-        "security:created": {
-            "@id": "http://purl.org/dc/terms/created",
-            "@type": "http://www.w3.org/2001/XMLSchema#dateTime"
+    "@context": [
+        {
+            "schema": "http://schema.org/",
+            "security": "https://w3id.org/security#"
         },
-        "security:proofPurpose": {
-            "@type": "@id"
-        },
-        "security:verificationMethod": {
-            "@type": "@id"
-        }
-    },
+        "https://w3id.org/security/v2"
+    ],
     "schema:name": "David Janes"
 }
